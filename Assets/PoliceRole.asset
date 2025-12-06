@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: PoliceRole
   m_EditorClassIdentifier: 
   roleName: Police
-  preStartSprite: {fileID: 0}
-  inGameSprite: {fileID: 0}
+  preStartSprite: {fileID: 10901, guid: 0000000000000000f000000000000000, type: 0}
+  inGameSprite: {fileID: 21300000, guid: b01454530527cf942b0e257a2f3c1973, type: 3}
