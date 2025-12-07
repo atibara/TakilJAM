@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class BulletController : MonoBehaviour
 {
@@ -34,6 +35,24 @@ public class BulletController : MonoBehaviour
         else if (other.CompareTag("Ground") || other.CompareTag("Wall"))
         {
             // Sadece kendini yok et
+            Destroy(gameObject);
+        }
+        else if (other.CompareTag("FinalEnemy") )
+        {
+            int currentSceneIndex = SceneManager.GetActiveScene().buildIndex;
+            int nextSceneIndex = currentSceneIndex + 1;
+
+            // Eğer sıradaki sahne Build Settings'de varsa yükle
+            if (nextSceneIndex < SceneManager.sceneCountInBuildSettings)
+            {
+                SceneManager.LoadScene(nextSceneIndex);
+            }
+            else
+            {
+                Debug.Log("Başka sahne kalmadı! Oyun bitti veya Ana Menüye dönülmeli.");
+                // İstersen burada SceneManager.LoadScene(0); diyerek ana menüye atabilirsin.
+            }
+            Destroy(other.gameObject);
             Destroy(gameObject);
         }
     }

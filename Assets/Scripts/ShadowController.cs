@@ -84,18 +84,14 @@ public class ShadowController : MonoBehaviour
     // --- ÇARPIŞMA (MOTORCU İÇİN) ---
     void OnTriggerEnter2D(Collider2D other)
     {
-        // Şartları sadeleştirdik:
-        // Sadece çarptığım şey "Enemy" ise çalış.
-        // (Rolüm var mı yok mu, motorcu muyum bakma.)
-
-        if (other.CompareTag("Enemy"))
+        // Sadece Motorcu modundaysak ve Düşmana çarparsak
+        if (hasRole && currentRole.isRunner && other.CompareTag("Enemy"))
         {
-            Debug.Log("Düşmana çarptım! Sahne değişiyor...");
-
-            // 1. Düşmanı Yok Et
+            // 1. Düşmanı Yok Et (veya hasar ver)
             Destroy(other.gameObject);
-
-            // 2. Polis Ölsün ve Sahne Değişsin
+            
+            // 2. Kendini Yok Et (Kamikaze!)
+            // Patlama efekti eklenebilir: Instantiate(explosionPrefab, transform.position, ...);
             Die();
         }
     }
@@ -191,27 +187,10 @@ public class ShadowController : MonoBehaviour
             myRenderer.sprite = defaultPatrolSprite;
     }
 
-    public void Die()
-    {
-        // 1. Önce görüntüyü ve çarpışmayı kapat (Sanki ölmüş gibi görünsün)
-        if (myRenderer != null) myRenderer.enabled = false;
-
-        Collider2D myCol = GetComponent<Collider2D>();
-        if (myCol != null) myCol.enabled = false;
-
-        // Hareketi durdur
-        if (myRb != null) myRb.linearVelocity = Vector2.zero;
-
-        // 2. Script hala hayatta olduğu için Invoke artık çalışabilir
-        Invoke(nameof(LoadSampleScene), 0.5f);
-
-        // Not: Destroy(gameObject) yapmana gerek yok, sahne değişince zaten yok olacak.
-    }
-
-    void LoadSampleScene()
-    {
-        SceneManager.LoadScene("SampleScene 2");  // değiştirmek istediğin sahne adı
-    }
+    public void Die() {
+        Debug.Log("Gölge öldü, sahne yeniden yüklenecek.");
+        SceneManager.LoadScene("SampleScene 2");
+        Destroy(gameObject); }
 
     public void GetStunned() { if(!isStunned) StartCoroutine(StunRoutine()); }
 
