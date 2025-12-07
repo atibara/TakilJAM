@@ -1,7 +1,6 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine.SceneManagement;
 
 public class ShadowController : MonoBehaviour
 {
@@ -34,7 +33,6 @@ public class ShadowController : MonoBehaviour
         
         if(defaultSprite == null) defaultSprite = myRenderer.sprite;
         
-        // Başlangıç rotasyonu
         transform.rotation = Quaternion.Euler(0, 0, 0);
     }
 
@@ -44,16 +42,13 @@ public class ShadowController : MonoBehaviour
 
         if (GameManager.Instance.isLevelStarted)
         {
-            // --- OYUN BAŞLADI ---
-            if (!isStunned)
+            // OYUN BAŞLADI
+            if (!isStunned) // Sersemlemediyse hareket et
             {
-                // EĞER MOTORCUYSA (Runner) -> Düz Git
                 if (hasRole && currentRole.isRunner)
                 {
                     MoveStraight();
-                    // Motorcu ateş etmez, kendisi çarpar. O yüzden HandleShooting yok.
                 }
-                // DEĞİLSE (Normal Rol) -> Devriye Gez + Ateş Et
                 else
                 {
                     Patrol();
@@ -65,43 +60,86 @@ public class ShadowController : MonoBehaviour
         }
         else
         {
-            // --- HAZIRLIK ---
+            // HAZIRLIK EVRESİ
             if(directionArrow != null) directionArrow.SetActive(true);
             DetermineFirstTarget();
+            // Hazırlıkta yerinde dursun ama yerçekimi çalışsın
+            myRb.linearVelocity = new Vector2(0, myRb.linearVelocity.y); 
         }
     }
 
-    // --- YENİ: MOTORCU HAREKETİ ---
+    // --- YENİLENEN HAREKET MANTIĞI (VELOCITY) ---
+
     void MoveStraight()
     {
-        // Karakter nereye bakıyorsa (Sağ/Sol) o yöne, RoleData'daki hızıyla gitsin
+        // Y eksenindeki hızı (yerçekimini) koru, sadece X'i değiştir
         float moveSpeed = currentRole.runSpeed;
         
-        // transform.right = Karakterin baktığı yön (Kırmızı ok)
-        myRb.linearVelocity = transform.right * moveSpeed; 
+        // Karakter sağa bakıyorsa (+1), sola bakıyorsa (-1)
+        float direction = (transform.rotation.eulerAngles.y == 0) ? 1f : -1f;
+        
+        myRb.linearVelocity = new Vector2(direction * moveSpeed, myRb.linearVelocity.y);
     }
+
+    void Patrol()
+    {
+        if (waypoints.Count == 0) return;
+        Transform target = waypoints[targetIndex];
+
+        // Hedefe olan yatay yönü bul
+        float direction = (target.position.x > transform.position.x) ? 1f : -1f;
+        
+        // Hızı uygula (Yine Y eksenine dokunmadan)
+        myRb.linearVelocity = new Vector2(direction * speed, myRb.linearVelocity.y);
+        
+        // Yüzünü dön
+        if (direction > 0) transform.rotation = Quaternion.Euler(0, 0, 0); 
+        else transform.rotation = Quaternion.Euler(0, 180, 0); 
+
+        // Hedefe X ekseninde yaklaştı mı? (Y farkını önemsemiyoruz artık)
+        if (Mathf.Abs(transform.position.x - target.position.x) < 0.2f)
+        {
+            targetIndex = (targetIndex + 1) % waypoints.Count;
+        }
+    }
+
+    // --- STUN (SERSEMLEME) MANTIĞI ---
+
+    public void GetStunned()
+    {
+        // Zaten sersemlemişse süreyi sıfırla veya tekrar başlatma
+        if(!isStunned) StartCoroutine(StunRoutine());
+    }
+
+    IEnumerator StunRoutine()
+    {
+        isStunned = true; 
+        
+        // Sersemlediğinde kontrolü bırak, fizik motoru savursun.
+        // Hızı sıfırlamıyoruz! Merminin verdiği itme gücü (force) işlesin.
+        
+        yield return new WaitForSeconds(1.5f); 
+        
+        isStunned = false;
+        
+        // Sersemleme bitince sadece X hızını sıfırla, Y kalsın (düşüyorsa düşsün)
+        myRb.linearVelocity = new Vector2(0, myRb.linearVelocity.y); 
+    }
+
+    // --- DİĞER FONKSİYONLAR (Aynen Kalıyor) ---
     
-    // --- ÇARPIŞMA (MOTORCU İÇİN) ---
     void OnTriggerEnter2D(Collider2D other)
     {
-        // Sadece Motorcu modundaysak ve Düşmana çarparsak
         if (hasRole && currentRole.isRunner && other.CompareTag("Enemy"))
         {
-            // 1. Düşmanı Yok Et (veya hasar ver)
             Destroy(other.gameObject);
-            
-            // 2. Kendini Yok Et (Kamikaze!)
-            // Patlama efekti eklenebilir: Instantiate(explosionPrefab, transform.position, ...);
             Die();
         }
     }
 
-    // --- (AŞAĞISI ESKİ KODLARIN AYNISI) ---
-
     void OnMouseDown()
     {
         if (GameManager.Instance.isLevelStarted) return;
-
         if (hasRole) RemoveRole();
         else FlipDirection();
     }
@@ -119,27 +157,12 @@ public class ShadowController : MonoBehaviour
         if (waypoints.Count < 2) return;
         bool facingRight = (Mathf.Abs(transform.rotation.eulerAngles.y) < 1f);
         Transform bestTarget = waypoints[0];
-
         foreach (Transform wp in waypoints)
         {
             if (facingRight) { if (wp.position.x > bestTarget.position.x) bestTarget = wp; }
             else { if (wp.position.x < bestTarget.position.x) bestTarget = wp; }
         }
         targetIndex = waypoints.IndexOf(bestTarget);
-    }
-
-    void Patrol()
-    {
-        if (waypoints.Count == 0) return;
-        Transform target = waypoints[targetIndex];
-        Vector2 newPos = Vector2.MoveTowards(myRb.position, target.position, speed * Time.deltaTime);
-        myRb.MovePosition(newPos);
-        
-        if (target.position.x > transform.position.x) transform.rotation = Quaternion.Euler(0, 0, 0); 
-        else transform.rotation = Quaternion.Euler(0, 180, 0); 
-
-        if (Vector2.Distance(transform.position, target.position) < 0.1f)
-            targetIndex = (targetIndex + 1) % waypoints.Count;
     }
 
     void HandleShooting()
@@ -188,18 +211,7 @@ public class ShadowController : MonoBehaviour
     }
 
     public void Die() {
-        Debug.Log("Gölge öldü, sahne yeniden yüklenecek.");
-        SceneManager.LoadScene("SampleScene 2");
-        Destroy(gameObject); }
-
-    public void GetStunned() { if(!isStunned) StartCoroutine(StunRoutine()); }
-
-    IEnumerator StunRoutine()
-    {
-        isStunned = true; 
-        yield return new WaitForSeconds(1.5f); 
-        isStunned = false;
-        myRb.linearVelocity = Vector2.zero; 
+        Destroy(gameObject); 
     }
 
     public bool HasRole() => hasRole;

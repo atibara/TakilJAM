@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Biker
   m_EditorClassIdentifier: 
   roleName: Biker
-  preStartSprite: {fileID: 10913, guid: 0000000000000000f000000000000000, type: 0}
-  inGameSprite: {fileID: 10913, guid: 0000000000000000f000000000000000, type: 0}
+  preStartSprite: {fileID: 21300000, guid: a09a7827a43004542b227b7863055b3c, type: 3}
+  inGameSprite: {fileID: 21300000, guid: dfa0fa08c80f239419cef5bbe2ee45c7, type: 3}
   projectilePrefab: {fileID: 0}
   fireRate: 1
   shootAngle: 0
