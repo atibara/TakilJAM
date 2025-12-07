@@ -5,12 +5,24 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/tutorial.unity
     guid: 78dcd2cbc09ca44499621dc88f07b3aa
   - enabled: 1
+    path: "Assets/Scenes/lev\u0131l-0.unity"
+    guid: 883d4d583afb7b949a96bcad65617a72
+  - enabled: 0
     path: Assets/Scenes/SampleScene.unity
     guid: 99c9720ab356a0642a771bea13969a05
+  - enabled: 1
+    path: "Assets/Scenes/lev\u0131l-2.unity"
+    guid: ebc4763d8813603448d3afecef9b51f0
+  - enabled: 1
+    path: "Assets/Scenes/lev\u0131l-3.unity"
+    guid: 068674ecdb290c44d91b8d0117b4371a
+  - enabled: 1
+    path: "Assets/Scenes/lev\u0131l-0 1.unity"
+    guid: e280e4ea73d7a9b43b9cdc5a3afc7d66
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0
