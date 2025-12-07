@@ -47,48 +47,44 @@ public class DraggableItem : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
 
     public void OnEndDrag(PointerEventData eventData)
     {
-        // Işınları tekrar aç
+        // 1. Işınları tekrar aç (Tekrar tıklanabilsin)
         canvasGroup.blocksRaycasts = true;
-        
+
         bool placedSuccessfully = false;
 
-        // Mouse'un olduğu noktaya dünyada bir ışın atıyoruz
+        // Mouse'un olduğu noktaya dünyada bir ışın at
         Vector2 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
         RaycastHit2D hit = Physics2D.Raycast(mousePos, Vector2.zero);
 
         if (hit.collider != null)
         {
-            // === KRİTİK DÜZELTME BURADA ===
-            // Işın 'AimPivot'a çarpmış olabilir. O yüzden 'GetComponentInParent' kullanıyoruz.
-            // Bu komut: "Çarptığım objede yoksa, onun babasına (Parent) bak" der.
+            // Çarptığım objede yoksa, ebeveynine (Parent) bak
             ShadowController shadow = hit.collider.GetComponentInParent<ShadowController>();
 
             // Eğer geçerli bir gölge bulduysak ve henüz rolü yoksa
             if (shadow != null && !shadow.HasRole())
             {
+                // Rolü ata
                 shadow.AssignRole(roleToGive, mySlot);
-                
+
+                // Slot'u kullanıldı olarak işaretle (UI'da grileşmesi vs için)
                 if (mySlot != null)
                 {
                     mySlot.MarkAsUsed();
                 }
-                
+
                 placedSuccessfully = true;
             }
         }
 
-        // Objeyi eski hiyerarşisine (Slotun içine) geri koy
+        // --- KRİTİK KISIM ---
+
+        // 2. Objeyi eski ailesinin (Slotun) içine geri koy
         transform.SetParent(originalParent);
 
-        if (!placedSuccessfully)
-        {
-            // Başarısızsa eski yerine geri dön
-            rectTransform.anchoredPosition = originalAnchoredPosition;
-        }
-        else
-        {
-            // Başarılıysa (veya kullanıldı olarak işaretlendiyse) tam merkeze oturt
-            rectTransform.anchoredPosition = Vector2.zero;
-        }
+        // 3. Pozisyonu SADECE ve SADECE en başta kaydettiğimiz yere eşitle.
+        // Başarılı olsa da, başarısız olsa da buraya gitmeli.
+        // Asla Vector2.zero yapmıyoruz.
+        rectTransform.anchoredPosition = originalAnchoredPosition;
     }
-}
+    }
