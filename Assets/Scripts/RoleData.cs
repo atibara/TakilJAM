@@ -10,6 +10,10 @@ public class RoleData : ScriptableObject
     public Sprite inGameSprite;
     
     [Header("Savaş Ayarları")]
-    public GameObject projectilePrefab; // Mermi Prefab'ı buraya gelecek
-    public float fireRate = 1f; // Ne sıklıkla ateş etsin?
+    public GameObject projectilePrefab; 
+    public float fireRate = 1f;
+    
+    // --- YENİ EKLENEN KISIM ---
+    [Range(-180f, 180f)] // Editörde kaydırma çubuğu çıkarır
+    public float shootAngle = 0f; // 0 = Düz, pozitif = Yukarı, negatif = Aşağı
 }
