@@ -19,7 +19,7 @@ public class DraggableItem : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
     {
         rectTransform = GetComponent<RectTransform>();
         canvasGroup = GetComponent<CanvasGroup>();
-        mySlot = GetComponent<RoleSlot>();
+        mySlot = GetComponentInParent<RoleSlot>();
     }
 
     public void OnBeginDrag(PointerEventData eventData)
