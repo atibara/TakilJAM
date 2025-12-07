@@ -7,11 +7,9 @@ public class ShadowController : MonoBehaviour
     [Header("Hareket Ayarları")]
     public List<Transform> waypoints; 
     public float speed = 2f;
+    public Sprite defaultSprite;
+    public Sprite defaultPatrolSprite; 
     
-    [Header("Görseller")]
-    public Sprite defaultSprite;        // Oyun başlamadan önceki sabit duruş (Idle)
-    public Sprite defaultPatrolSprite;  // YENİ: Oyun başlayınca rolü yoksa yürüyüş hali (Patrol)
-
     [Header("Referanslar")]
     [SerializeField] private Transform firePoint;     
     [SerializeField] private GameObject directionArrow; 
@@ -35,7 +33,7 @@ public class ShadowController : MonoBehaviour
         
         if(defaultSprite == null) defaultSprite = myRenderer.sprite;
         
-        // Başlangıçta yönü ayarla
+        // Başlangıç rotasyonu
         transform.rotation = Quaternion.Euler(0, 0, 0);
     }
 
@@ -48,67 +46,83 @@ public class ShadowController : MonoBehaviour
             // --- OYUN BAŞLADI ---
             if (!isStunned)
             {
-                Patrol();
-                HandleShooting();
+                // EĞER MOTORCUYSA (Runner) -> Düz Git
+                if (hasRole && currentRole.isRunner)
+                {
+                    MoveStraight();
+                    // Motorcu ateş etmez, kendisi çarpar. O yüzden HandleShooting yok.
+                }
+                // DEĞİLSE (Normal Rol) -> Devriye Gez + Ateş Et
+                else
+                {
+                    Patrol();
+                    HandleShooting();
+                }
                 
                 if(directionArrow != null) directionArrow.SetActive(false);
             }
         }
         else
         {
-            // --- HAZIRLIK EVRESİ ---
+            // --- HAZIRLIK ---
             if(directionArrow != null) directionArrow.SetActive(true);
             DetermineFirstTarget();
         }
     }
 
-    // --- TIKLAMA VE YÖN ---
+    // --- YENİ: MOTORCU HAREKETİ ---
+    void MoveStraight()
+    {
+        // Karakter nereye bakıyorsa (Sağ/Sol) o yöne, RoleData'daki hızıyla gitsin
+        float moveSpeed = currentRole.runSpeed;
+        
+        // transform.right = Karakterin baktığı yön (Kırmızı ok)
+        myRb.linearVelocity = transform.right * moveSpeed; 
+    }
+    
+    // --- ÇARPIŞMA (MOTORCU İÇİN) ---
+    void OnTriggerEnter2D(Collider2D other)
+    {
+        // Sadece Motorcu modundaysak ve Düşmana çarparsak
+        if (hasRole && currentRole.isRunner && other.CompareTag("Enemy"))
+        {
+            // 1. Düşmanı Yok Et (veya hasar ver)
+            Destroy(other.gameObject);
+            
+            // 2. Kendini Yok Et (Kamikaze!)
+            // Patlama efekti eklenebilir: Instantiate(explosionPrefab, transform.position, ...);
+            Die();
+        }
+    }
+
+    // --- (AŞAĞISI ESKİ KODLARIN AYNISI) ---
 
     void OnMouseDown()
     {
         if (GameManager.Instance.isLevelStarted) return;
 
-        if (hasRole)
-        {
-            RemoveRole();
-        }
-        else
-        {
-            FlipDirection();
-        }
+        if (hasRole) RemoveRole();
+        else FlipDirection();
     }
 
     void FlipDirection()
     {
         float currentY = transform.rotation.eulerAngles.y;
-
-        if (Mathf.Abs(currentY) < 1f) 
-            transform.rotation = Quaternion.Euler(0, 180, 0); 
-        else
-            transform.rotation = Quaternion.Euler(0, 0, 0); 
-
+        if (Mathf.Abs(currentY) < 1f) transform.rotation = Quaternion.Euler(0, 180, 0); 
+        else transform.rotation = Quaternion.Euler(0, 0, 0); 
         DetermineFirstTarget();
     }
-
-    // --- DEVRİYE ---
 
     void DetermineFirstTarget()
     {
         if (waypoints.Count < 2) return;
-
         bool facingRight = (Mathf.Abs(transform.rotation.eulerAngles.y) < 1f);
         Transform bestTarget = waypoints[0];
 
         foreach (Transform wp in waypoints)
         {
-            if (facingRight)
-            {
-                if (wp.position.x > bestTarget.position.x) bestTarget = wp;
-            }
-            else
-            {
-                if (wp.position.x < bestTarget.position.x) bestTarget = wp;
-            }
+            if (facingRight) { if (wp.position.x > bestTarget.position.x) bestTarget = wp; }
+            else { if (wp.position.x < bestTarget.position.x) bestTarget = wp; }
         }
         targetIndex = waypoints.IndexOf(bestTarget);
     }
@@ -116,24 +130,16 @@ public class ShadowController : MonoBehaviour
     void Patrol()
     {
         if (waypoints.Count == 0) return;
-
         Transform target = waypoints[targetIndex];
-        
         Vector2 newPos = Vector2.MoveTowards(myRb.position, target.position, speed * Time.deltaTime);
         myRb.MovePosition(newPos);
         
-        if (target.position.x > transform.position.x)
-            transform.rotation = Quaternion.Euler(0, 0, 0); 
-        else
-            transform.rotation = Quaternion.Euler(0, 180, 0); 
+        if (target.position.x > transform.position.x) transform.rotation = Quaternion.Euler(0, 0, 0); 
+        else transform.rotation = Quaternion.Euler(0, 180, 0); 
 
         if (Vector2.Distance(transform.position, target.position) < 0.1f)
-        {
             targetIndex = (targetIndex + 1) % waypoints.Count;
-        }
     }
-
-    // --- ATEŞ ETME ---
 
     void HandleShooting()
     {
@@ -150,15 +156,10 @@ public class ShadowController : MonoBehaviour
     void Shoot()
     {
         Vector3 spawnPos = (firePoint != null) ? firePoint.position : transform.position;
-        
-        // AÇI HESAPLAMA (RoleData'dan gelen açı)
         Quaternion facingRotation = transform.rotation;
         Quaternion finalRotation = facingRotation * Quaternion.Euler(0, 0, currentRole.shootAngle);
-
         Instantiate(currentRole.projectilePrefab, spawnPos, finalRotation);
     }
-
-    // --- ROL VE GÖRSEL YÖNETİMİ (GÜNCELLENDİ) ---
 
     public void AssignRole(RoleData newRole, RoleSlot slot) 
     {
@@ -171,40 +172,23 @@ public class ShadowController : MonoBehaviour
     void RemoveRole()
     {
         if (sourceSlot != null) sourceSlot.MarkAsReturned();
-        
         hasRole = false;
         currentRole = null;
         sourceSlot = null;
-        
-        // Rolü bıraktığında varsayılan (sabit) haline dönsün
         myRenderer.sprite = defaultSprite; 
     }
 
     public void ActivateBattleMode()
     {
-        // 1. Durum: ROLÜ VARSA -> Rolün savaş görselini giy
         if (hasRole && currentRole != null && currentRole.inGameSprite != null) 
-        {
             myRenderer.sprite = currentRole.inGameSprite;
-        }
-        // 2. Durum: ROLÜ YOKSA (Default Haldeyse) -> Yürüyüş görselini giy (YENİ KISIM)
         else if (!hasRole && defaultPatrolSprite != null)
-        {
             myRenderer.sprite = defaultPatrolSprite;
-        }
     }
 
-    // --- HASAR ---
+    public void Die() { Destroy(gameObject); }
 
-    public void Die()
-    {
-        Destroy(gameObject); 
-    }
-
-    public void GetStunned()
-    {
-        if(!isStunned) StartCoroutine(StunRoutine());
-    }
+    public void GetStunned() { if(!isStunned) StartCoroutine(StunRoutine()); }
 
     IEnumerator StunRoutine()
     {
