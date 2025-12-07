@@ -2,33 +2,39 @@ using UnityEngine;
 
 public class BulletController : MonoBehaviour
 {
-    public float speed = 10f;
-    public float lifeTime = 3f;
+    [Header("Mermi Ayarları")]
+    [SerializeField] private float speed = 20f;      // Mermi hızı (Yüksek tut)
+    [SerializeField] private float lifeTime = 3f;    // Çarpmazsa kaç saniyede yok olsun?
+
+    private Rigidbody2D rb;
 
     void Start()
     {
-        // 1. Mermiyi oluşturulduğu yöne (Sağ/Sol) fırlat
-        // Transform.right, objenin kırmızı ok yönüdür.
-        GetComponent<Rigidbody2D>().linearVelocity = transform.right * speed;
+        rb = GetComponent<Rigidbody2D>();
         
-        // 3 saniye sonra kimseye çarpmazsa yok olsun (Performans için)
-        Destroy(gameObject, lifeTime); 
+        // Mermiyi fırlatıldığı yöne (Right) doğru hızlandır
+        rb.linearVelocity = transform.right * speed;
+
+        // Çarpışma olmazsa belli süre sonra sahneden temizle
+        Destroy(gameObject, lifeTime);
     }
 
-    void OnTriggerEnter2D(Collider2D hitInfo)
+    void OnTriggerEnter2D(Collider2D other)
     {
-        // Çarptığı şey bir Gölge mi?
-        ShadowController enemy = hitInfo.GetComponent<ShadowController>();
-        
-        if (enemy != null)
+        // Düşmana çarparsa
+        if (other.CompareTag("Enemy"))
         {
-            // --- ÖLDÜRME MANTIĞI ---
-            enemy.Die(); // Gölge scriptine bu fonksiyonu ekleyeceğiz
-            Destroy(gameObject); // Mermiyi yok et
+            // Düşmanı yok et
+            Destroy(other.gameObject);
+            
+            // Kendini yok et
+            Destroy(gameObject);
         }
-        else if(hitInfo.tag != "Player") // Kendimizi vurmayalım
+        // Duvara veya zemine çarparsa
+        else if (other.CompareTag("Ground") || other.CompareTag("Wall"))
         {
-             Destroy(gameObject); // Duvara çarparsa yok olsun
+            // Sadece kendini yok et
+            Destroy(gameObject);
         }
     }
 }

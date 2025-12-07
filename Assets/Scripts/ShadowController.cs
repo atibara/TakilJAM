@@ -1,41 +1,55 @@
 using UnityEngine;
-using System.Collections; // Coroutine için gerekli
+using System.Collections;
 
 public class ShadowController : MonoBehaviour
 {
-    [Header("Ayarlar")]
+    [Header("Hareket Ayarları")]
     public Transform[] waypoints;
     public float speed = 2f;
     public Sprite defaultSprite;
-    public Transform firePoint; // Merminin çıkacağı namlu ucu (Elle oluşturacağız)
+    
+    [Header("Referanslar")]
+    [SerializeField] private AimManager aimManager; // AimScript'inin olduğu objeyi buraya at
 
     // State
     private RoleData currentRole;
     private RoleSlot sourceSlot;
     private bool hasRole = false;
-    private bool isStunned = false; // İtildi mi?
+    private bool isStunned = false; 
     private float nextFireTime = 0f;
     
+    // Bileşenler
     private SpriteRenderer myRenderer;
-    private Rigidbody2D myRb; // Fizik için
+    private Rigidbody2D myRb; 
     private int wpIndex = 0;
+
+    // Mouse Çakışma Çözümü İçin
+    private Vector3 clickStartPos;
+    private bool isDragging = false;
 
     void Start()
     {
         myRenderer = GetComponent<SpriteRenderer>();
         myRb = GetComponent<Rigidbody2D>();
+        
         if(defaultSprite == null) defaultSprite = myRenderer.sprite;
+
+        if (aimManager == null)
+        {
+            aimManager = GetComponentInChildren<AimManager>();
+        }
     }
 
     void Update()
     {
+        // GameManager kontrolü (Eğer GameManager sahne yoksa hata vermemesi için ? kullandık)
         if (GameManager.Instance == null || !GameManager.Instance.isLevelStarted) return;
-        if (isStunned) return; // İtildiyse hareket etme/ateş etme
+        if (isStunned) return; 
 
         Patrol();
 
-        // --- ATEŞ ETME MANTIĞI ---
-        if (hasRole && currentRole.projectilePrefab != null)
+        // --- ATEŞ ETME ---
+        if (hasRole && currentRole != null && currentRole.projectilePrefab != null)
         {
             if (Time.time >= nextFireTime)
             {
@@ -45,90 +59,140 @@ public class ShadowController : MonoBehaviour
         }
     }
 
+    // --- MOUSE INPUTLARI ---
+
+    void OnMouseDown()
+    {
+        if (GameManager.Instance.isLevelStarted || !hasRole) return;
+
+        clickStartPos = Input.mousePosition;
+        isDragging = false;
+    }
+
+    void OnMouseDrag()
+    {
+        if (GameManager.Instance.isLevelStarted || !hasRole) return;
+
+        // 10 pikselden fazla oynattıysa sürükleme moduna geç
+        if (Vector3.Distance(Input.mousePosition, clickStartPos) > 10f)
+        {
+            isDragging = true;
+
+            if (aimManager != null)
+            {
+                Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+                mousePos.z = 0f;
+
+                Vector3 pivotPos = aimManager.transform.position;
+                Vector3 direction = mousePos - pivotPos;
+                
+                float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+                aimManager.transform.rotation = Quaternion.Euler(0, 0, angle);
+            }
+        }
+    }
+
+    void OnMouseUp()
+    {
+        if (GameManager.Instance.isLevelStarted || !hasRole) return;
+
+        // Sürüklemediyse, sadece tıkladıysa -> ROLÜ SİL
+        if (!isDragging)
+        {
+            RemoveRole();
+        }
+    }
+
+    // --- FONKSİYONLAR ---
+
     void Shoot()
     {
-        // Mermiyi oluştur (FirePoint yoksa gölgenin merkezinden çıkar)
-        Vector3 spawnPos = (firePoint != null) ? firePoint.position : transform.position;
-        
-        // Mermiyi yarat ve gölgenin baktığı yöne (rotation) göre ayarla
-        Instantiate(currentRole.projectilePrefab, spawnPos, transform.rotation);
+        if (aimManager == null) return;
+
+        Transform fp = aimManager.GetFirePoint();
+
+        if (fp != null)
+        {
+            Instantiate(currentRole.projectilePrefab, fp.position, fp.rotation);
+        }
     }
 
-    // --- HASAR VE ETKİLEŞİM ---
-
-    public void Die()
+    void RemoveRole()
     {
-        // Polis vurduğunda çalışır
-        Debug.Log("Gölge öldü!");
+        if (sourceSlot != null) sourceSlot.MarkAsReturned();
         
-        // Patlama efekti vs. eklenebilir
-        Destroy(gameObject); 
+        hasRole = false;
+        currentRole = null;
+        sourceSlot = null;
+        myRenderer.sprite = defaultSprite;
+
+        if (aimManager != null)
+        {
+            aimManager.HideAim();
+        }
     }
 
-    public void GetStunned()
-    {
-        // Su çarptığında çalışır
-        if(!isStunned) StartCoroutine(StunRoutine());
-    }
-
-    IEnumerator StunRoutine()
-    {
-        isStunned = true; // Kontrolü kapat (Fizik motoru savursun)
-        Debug.Log("Gölge ıslandı ve savruldu!");
-        
-        yield return new WaitForSeconds(1.5f); // 1.5 saniye sersemle
-        
-        // Toparlanma
-        isStunned = false;
-        myRb.linearVelocity = Vector2.zero; // Kaymayı durdur
-    }
-
-    // --- ESKİ FONKSİYONLAR (Aynen Kalıyor) ---
     public void AssignRole(RoleData newRole, RoleSlot slot) 
     {
         currentRole = newRole;
         sourceSlot = slot;
         hasRole = true;
         if (newRole.preStartSprite != null) myRenderer.sprite = newRole.preStartSprite;
+        
+        if (aimManager != null)
+        {
+            aimManager.ShowAim();
+        }
     }
 
     public void ActivateBattleMode()
     {
-        if (hasRole && currentRole.inGameSprite != null) myRenderer.sprite = currentRole.inGameSprite;
+        if (hasRole && currentRole != null && currentRole.inGameSprite != null) 
+            myRenderer.sprite = currentRole.inGameSprite;
+
+        if (aimManager != null)
+        {
+            aimManager.LockAndHideAim();
+        }
     }
 
-    void OnMouseDown()
+    // DÜZELTME: velocity -> linearVelocity (Unity 6)
+    IEnumerator StunRoutine()
     {
-        if (GameManager.Instance.isLevelStarted || !hasRole) return;
-        if(sourceSlot != null) sourceSlot.MarkAsReturned();
-        hasRole = false;
-        currentRole = null;
-        sourceSlot = null;
-        myRenderer.sprite = defaultSprite;
+        isStunned = true; 
+        yield return new WaitForSeconds(1.5f); 
+        
+        isStunned = false;
+        myRb.linearVelocity = Vector2.zero; // Unity 6 için linearVelocity
     }
-
-    public bool HasRole() => hasRole;
 
     void Patrol()
     {
         if (waypoints.Length == 0) return;
         Transform target = waypoints[wpIndex];
         
-        // Hareketi Rigidbody ile yapalım ki itilince sorun çıkmasın
         Vector2 newPos = Vector2.MoveTowards(myRb.position, target.position, speed * Time.deltaTime);
         myRb.MovePosition(newPos);
         
-        // Yön Çevirme (Mermi doğru yöne gitsin diye Rotation kullanıyoruz)
         if (target.position.x > transform.position.x)
-        {
-            transform.rotation = Quaternion.Euler(0, 0, 0); // Sağa bak (0 derece)
-        }
+            transform.rotation = Quaternion.Euler(0, 0, 0); 
         else
-        {
-            transform.rotation = Quaternion.Euler(0, 180, 0); // Sola bak (180 derece)
-        }
+            transform.rotation = Quaternion.Euler(0, 180, 0); 
 
         if (Vector2.Distance(transform.position, target.position) < 0.1f)
             wpIndex = (wpIndex + 1) % waypoints.Length;
     }
+
+    // Diğer scriptler çağırıyorsa diye Die fonksiyonu
+    public void Die()
+    {
+        Destroy(gameObject);
+    }
+    
+    public void GetStunned()
+    {
+        if(!isStunned) StartCoroutine(StunRoutine());
+    }
+
+    public bool HasRole() => hasRole;
 }

@@ -1,46 +1,51 @@
 using UnityEngine;
 
-public class WaterController : MonoBehaviour
+public class WaterballController : MonoBehaviour
 {
-    public float throwForce = 8f; // Fırlatma gücü
-    public float pushPower = 5f;  // Çarptığında rakibi itme gücü
-    
+    [Header("Su Topu Ayarları")]
+    [SerializeField] private float speed = 12f;          // Mermiden biraz daha yavaş olabilir
+    [SerializeField] private float lifeTime = 4f;        // Menzili biraz daha uzun olabilir
+    [SerializeField] private float knockbackForce = 10f; // İtme gücü
+
     private Rigidbody2D rb;
 
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
+        
+        // Su topunu fırlat
+        rb.linearVelocity = transform.right * speed;
 
-        // --- EĞİK ATIŞ MANTIĞI (45 Derece) ---
-        // Hem ileri (transform.right) hem yukarı (Vector2.up) kuvvet uygularız.
-        // Bu ikisinin toplamı 45 derecelik bir vektör oluşturur.
-        Vector2 throwDirection = (transform.right + Vector3.up).normalized;
-        
-        rb.linearVelocity = throwDirection * throwForce;
-        
-        Destroy(gameObject, 4f);
+        Destroy(gameObject, lifeTime);
     }
 
-    void OnCollisionEnter2D(Collision2D collision)
+    void OnTriggerEnter2D(Collider2D other)
     {
-        // Çarptığı objenin fiziği var mı?
-        Rigidbody2D targetRb = collision.gameObject.GetComponent<Rigidbody2D>();
-        ShadowController enemy = collision.gameObject.GetComponent<ShadowController>();
-
-        if (targetRb != null && enemy != null)
+        // Düşmana çarparsa
+        if (other.CompareTag("Enemy"))
         {
-            // --- İTME (KNOCKBACK) MANTIĞI ---
-            // Suyun geliş yönüne göre rakibi geriye it
-            Vector2 pushDir = (collision.transform.position - transform.position).normalized;
-            
-            // Rakibi it (Impulse: Anlık darbe)
-            targetRb.AddForce(pushDir * pushPower, ForceMode2D.Impulse);
-            
-            // Gölgeye "Ben itildim, devriyeyi durdur" de
-            enemy.GetStunned(); 
-        }
+            // Düşmanın Rigidbody'sini al (İtmek için gerekli)
+            Rigidbody2D enemyRb = other.GetComponent<Rigidbody2D>();
 
-        // Su çarptığı yerde yok olsun (veya partikül çıkarsın)
-        Destroy(gameObject);
+            if (enemyRb != null)
+            {
+                // Düşmanın şu anki hareketini sıfırla (Daha net bir itiş için)
+                enemyRb.linearVelocity = Vector2.zero;
+
+                // Merminin gidiş yönünü al
+                Vector2 forceDirection = rb.linearVelocity.normalized;
+
+                // O yöne doğru anlık güç uygula (Impulse = Anlık darbe)
+                enemyRb.AddForce(forceDirection * knockbackForce, ForceMode2D.Impulse);
+            }
+
+            // Su topunu yok et
+            Destroy(gameObject);
+        }
+        // Duvara veya zemine çarparsa
+        else if (other.CompareTag("Ground") || other.CompareTag("Wall"))
+        {
+            Destroy(gameObject);
+        }
     }
 }

@@ -3,77 +3,92 @@ using UnityEngine.EventSystems;
 
 public class DraggableItem : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
 {
-    public RoleData roleToGive; 
-    
-    private RoleSlot mySlot; 
-    private Transform originalParent;
+    [Header("Veri")]
+    public RoleData roleToGive; // Inspector üzerinden atanacak RoleData (Polis/İtfaiye)
+
+    // Bileşenler
+    private RoleSlot mySlot;
     private RectTransform rectTransform;
     private CanvasGroup canvasGroup;
     
-    // YENİ: Başlangıçtaki yerel pozisyonu tutmak için değişken
-    private Vector2 originalAnchoredPosition; 
+    // Pozisyon Kayıtları
+    private Transform originalParent;
+    private Vector2 originalAnchoredPosition;
 
     void Awake()
     {
         rectTransform = GetComponent<RectTransform>();
         canvasGroup = GetComponent<CanvasGroup>();
-        mySlot = GetComponent<RoleSlot>(); 
+        mySlot = GetComponent<RoleSlot>();
     }
 
     public void OnBeginDrag(PointerEventData eventData)
     {
-        if (mySlot.isUsed) return; 
+        // Eğer slot zaten kullanıldıysa sürüklemeye izin verme
+        if (mySlot != null && mySlot.isUsed) return;
 
         originalParent = transform.parent;
-        
-        // YENİ: Parent değişmeden önce, şu anki slot içindeki konumunu kaydet
         originalAnchoredPosition = rectTransform.anchoredPosition;
 
-        transform.SetParent(transform.root); 
-        canvasGroup.blocksRaycasts = false; 
+        // Sürüklerken UI'da en öne gelmesi için root'a (en dışa) taşıyoruz
+        transform.SetParent(transform.root);
+        
+        // Işınların (Raycast) içinden geçmesine izin ver ki arkadaki Gölgeyi görebilelim
+        canvasGroup.blocksRaycasts = false;
     }
 
     public void OnDrag(PointerEventData eventData)
     {
-        if (mySlot.isUsed) return;
+        if (mySlot != null && mySlot.isUsed) return;
+        
+        // Mouse ile hareket et
         rectTransform.position = eventData.position;
     }
 
     public void OnEndDrag(PointerEventData eventData)
     {
+        // Işınları tekrar aç
         canvasGroup.blocksRaycasts = true;
-        // bool success değişkenine gerek kalmayabilir, mantığa göre düzenledim:
+        
+        bool placedSuccessfully = false;
 
+        // Mouse'un olduğu noktaya dünyada bir ışın atıyoruz
         Vector2 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
         RaycastHit2D hit = Physics2D.Raycast(mousePos, Vector2.zero);
-        
-        bool placedSuccessfully = false; // Başarılı olup olmadığını kontrol edelim
 
         if (hit.collider != null)
         {
-            ShadowController shadow = hit.collider.GetComponent<ShadowController>();
-            
+            // === KRİTİK DÜZELTME BURADA ===
+            // Işın 'AimPivot'a çarpmış olabilir. O yüzden 'GetComponentInParent' kullanıyoruz.
+            // Bu komut: "Çarptığım objede yoksa, onun babasına (Parent) bak" der.
+            ShadowController shadow = hit.collider.GetComponentInParent<ShadowController>();
+
+            // Eğer geçerli bir gölge bulduysak ve henüz rolü yoksa
             if (shadow != null && !shadow.HasRole())
             {
                 shadow.AssignRole(roleToGive, mySlot);
-                mySlot.MarkAsUsed();
-                placedSuccessfully = true; // Başarıyla yerleşti
+                
+                if (mySlot != null)
+                {
+                    mySlot.MarkAsUsed();
+                }
+                
+                placedSuccessfully = true;
             }
         }
 
-        // Görsel olarak yerine dön
+        // Objeyi eski hiyerarşisine (Slotun içine) geri koy
         transform.SetParent(originalParent);
 
         if (!placedSuccessfully)
         {
-            // EĞER YERLEŞMEDİYSE: Eski kaydettiğimiz konuma dön
+            // Başarısızsa eski yerine geri dön
             rectTransform.anchoredPosition = originalAnchoredPosition;
         }
         else
         {
-            // EĞER YERLEŞTİYSE: (Opsiyonel) Slot içinde ortalayabilirsin veya yine eski konumda kalabilir
-            // mySlot.MarkAsUsed() zaten objeyi siliyorsa veya gizliyorsa burası önemli olmayabilir.
-            rectTransform.anchoredPosition = Vector2.zero; 
+            // Başarılıysa (veya kullanıldı olarak işaretlendiyse) tam merkeze oturt
+            rectTransform.anchoredPosition = Vector2.zero;
         }
     }
 }

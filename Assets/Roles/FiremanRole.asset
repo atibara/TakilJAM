@@ -10,10 +10,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 21f2b2de32d3e39419e4654860ca8665, type: 3}
-  m_Name: PoliceRole
+  m_Name: FiremanRole
   m_EditorClassIdentifier: 
-  roleName: Police
+  roleName: Fireman
   preStartSprite: {fileID: 10901, guid: 0000000000000000f000000000000000, type: 0}
-  inGameSprite: {fileID: 21300000, guid: b01454530527cf942b0e257a2f3c1973, type: 3}
-  projectilePrefab: {fileID: 5360254655939292090, guid: 6e870c03a23baba438aca5f2663c7ada, type: 3}
-  fireRate: 1
+  inGameSprite: {fileID: 21300000, guid: b54fcd2d5b3a05d4f9b3c26ea7508437, type: 3}
+  projectilePrefab: {fileID: 4857998127607916001, guid: 2b2ab5894982aba48a636487d3295ff8, type: 3}
+  fireRate: 0.1
