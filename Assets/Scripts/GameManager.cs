@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour
 {
@@ -7,23 +8,48 @@ public class GameManager : MonoBehaviour
 
     void Awake()
     {
-        Instance = this;
+        // Singleton yapısı
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+        }
+        else
+        {
+            Instance = this;
+        }
     }
 
-    // Butonun görmesi için 'public' olması şart
+    // --- YENİ EKLENEN KISIM: UPDATE ---
+    void Update()
+    {
+        // Klavyeden 'F' tuşuna basıldığı anı yakala
+        if (Input.GetKeyDown(KeyCode.F))
+        {
+            RestartLevel();
+        }
+    }
+
     public void StartLevel()
     {
+        if (isLevelStarted) return;
+
         isLevelStarted = true;
         Debug.Log("Oyun Başladı! Görünümler güncelleniyor...");
 
-        // --- DEĞİŞEN KISIM BURASI ---
-        // Eskisi: FindObjectsOfType<ShadowController>();
-        // Yenisi (Daha Hızlı):
         ShadowController[] allShadows = FindObjectsByType<ShadowController>(FindObjectsSortMode.None);
 
         foreach (ShadowController shadow in allShadows)
         {
             shadow.ActivateBattleMode();
         }
+    }
+
+    public void RestartLevel()
+    {
+        Debug.Log("Bölüm Yeniden Yükleniyor...");
+
+        // Aktif sahneyi baştan yükle
+        int currentSceneIndex = SceneManager.GetActiveScene().buildIndex;
+        SceneManager.LoadScene(currentSceneIndex);
     }
 }
