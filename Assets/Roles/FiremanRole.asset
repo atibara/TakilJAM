@@ -17,6 +17,6 @@ MonoBehaviour:
   inGameSprite: {fileID: 21300000, guid: b54fcd2d5b3a05d4f9b3c26ea7508437, type: 3}
   projectilePrefab: {fileID: 4857998127607916001, guid: 2b2ab5894982aba48a636487d3295ff8, type: 3}
   fireRate: 0.1
-  shootAngle: 5
+  shootAngle: 45
   isRunner: 0
   runSpeed: 8
